@@ -1,3 +1,5 @@
+<img src="assets/icon.png" width="256" alt="logo">
+
 # Steam Game Activity Emulation
 
 ## ✍️ Authors
