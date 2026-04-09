@@ -4,8 +4,8 @@ from threading import Event, Timer
 import pystray
 from PIL import Image
 
-from .mode import run
-from config import ICON_PATH
+from utils import run
+from config import APP_NAME, APP_SLOG, ICON_PATH
 
 TIME_RESTART_DELAY = 30  # seconds
 processes = []
@@ -73,10 +73,21 @@ def app(mode: str = "run", steam_game_id: list = None):
     if steam_game_id is None:
         steam_game_id = ["480"]
 
-    try:
-        logging.info(f"Starting app with mode: {mode} and Steam Game ID(s): {steam_game_id}")
+    logging.info(f"Starting app with mode: {mode} and Steam Game ID(s): {steam_game_id}")
 
-        if mode == "run":
+    if mode == "console":
+        start_processes(steam_game_id)
+
+        try:
+            while True:
+                for p in processes:
+                    p.join(timeout=1)
+        except KeyboardInterrupt:
+            logging.info("Ctrl+C received, shutting down...")
+            stop_all_processes()
+
+    elif mode == "run":
+        try:
             start_processes(steam_game_id)
 
             menu = pystray.Menu(
@@ -85,14 +96,14 @@ def app(mode: str = "run", steam_game_id: list = None):
             )
 
             icon = pystray.Icon(
-                "steam_game_activity_emulation",
+                APP_SLOG,
                 Image.open(ICON_PATH),
-                "Steam Game Activity Emulation",
+                APP_NAME,
                 menu
             )
 
             icon.run()
 
-    except Exception as e:
-        logging.error(f"An error occurred in app: {e}")
-        stop_all_processes()
+        except Exception as e:
+            logging.error(f"An error occurred in app: {e}")
+            stop_all_processes()

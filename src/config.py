@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 
+APP_NAME = "Steam Game Activity Emulation"
+APP_SLOG = "steam_game_activity_emulation"
 
 ROOT_PATH = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ASSETS_PATH = Path(os.path.join(ROOT_PATH, 'assets'))
