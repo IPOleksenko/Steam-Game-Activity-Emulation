@@ -12,6 +12,31 @@ processes = []
 stop_event = Event()
 current_steam_game_ids = []
 
+import sys
+import subprocess
+import os
+
+def detach_console():
+    if "--detached" in sys.argv:
+        return
+
+    # Windows
+    if os.name == "nt":
+        subprocess.Popen(
+            ["pythonw", *sys.argv, "--detached"],
+            close_fds=True
+        )
+    else:
+        # Linux / macOS
+        subprocess.Popen(
+            [sys.executable, *sys.argv, "--detached"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True
+        )
+
+    sys.exit()
 
 def worker(game_id: str):
     try:
@@ -87,9 +112,10 @@ def app(mode: str = "run", steam_game_id: list = None):
             stop_all_processes()
 
     elif mode == "run":
+        detach_console()
+        start_processes(steam_game_id)
+        
         try:
-            start_processes(steam_game_id)
-
             menu = pystray.Menu(
                 pystray.MenuItem("Restart", restart_all),
                 pystray.MenuItem("Exit", stop_and_exit),
