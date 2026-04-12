@@ -5,9 +5,8 @@ import pystray
 from PIL import Image
 
 from utils import run
-from config import APP_NAME, APP_SLOG, ICON_PATH
+from config import APP_NAME, APP_SLOG, ICON_PATH, TIME_RESTART_DELAY
 
-TIME_RESTART_DELAY = 30  # seconds
 processes = []
 stop_event = Event()
 current_steam_game_ids = []
