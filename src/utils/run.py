@@ -4,7 +4,7 @@ import time
 from utils.dll import DLL
 from utils.steamworks import Steamworks
 
-from config import CALLBACK_SLEEP_INTERVAL
+from config import callback_sleep_interval
 
 def run(steam_game_id: list = ["480"]):
     try:
@@ -13,7 +13,7 @@ def run(steam_game_id: list = ["480"]):
         
         while True:
             steamworks.SteamAPI_RunCallbacks()
-            time.sleep(CALLBACK_SLEEP_INTERVAL)
+            time.sleep(callback_sleep_interval)
         
     except Exception as e:
         logging.error(f"An error occurred: {e}")

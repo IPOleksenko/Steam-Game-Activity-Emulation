@@ -1,31 +1,71 @@
 import logging
-import sys
+import argparse
 
 from application import app
+from config import MOD_TYPES
+import config
 
-MOD_TYPE = ["run", "console"]
+def parse_arguments():
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument(
+        "--mode",
+        type=str.lower,
+        choices=MOD_TYPES,
+        default=MOD_TYPES[0],
+        help="Mode to run the application in (default: %(default)s)"
+    )
+    pre_args, _ = pre_parser.parse_known_args()
 
-def main(*args, **kwargs):
-    mode = args[0] if args and args[0] in MOD_TYPE else "run"
-    if not args or args[0] not in MOD_TYPE:
-        logging.warning("Invalid or missing mode. Defaulting to 'run'.")
+    parser = argparse.ArgumentParser(description="Run the application", parents=[pre_parser])
+    parser.add_argument(
+        "--steam-game-id",
+        type=str,
+        nargs="+",
+        default=["480"],
+        help="One or more Steam Game IDs to emulate (default: %(default)s)"
+    )
 
-    raw_ids = args[1:] if len(args) > 1 else []
-    steam_game_id = [x for x in raw_ids if x.isdigit()]
+    parser.add_argument(
+        "--detached",
+        action="store_true",
+        default= False if pre_args.mode == MOD_TYPES[0] else True,
+        help=f"Run the application in detached mode (default: %(default)s for '{MOD_TYPES[0]}' mode, True for all other modes)"
+    )
 
-    if not raw_ids:
-        logging.info("No Steam Game ID provided. Using default: 480 (Spacewar).")
+    parser.add_argument(
+        "--time_restart_delay",
+        type=float,
+        default=config.time_restart_delay,
+        help="Delay in seconds before restarting processes after a restart request (default: %(default)s)"
+    )
 
-    invalid = [x for x in raw_ids if not x.isdigit()]
-    for x in invalid:
-        logging.warning(f"Invalid Steam Game ID '{x}' removed from the list.")
+    parser.add_argument(
+        "--callback_sleep_interval",
+        type=float,
+        default=config.callback_sleep_interval,
+        help="Sleep interval in seconds for SteamAPI_RunCallbacks loop (default: %(default)s)"
+    )
 
-    if not steam_game_id:
-        steam_game_id = ["480"]
-        logging.warning("No valid Steam Game IDs provided. Using default: 480 (Spacewar).")
+    return parser.parse_args()
 
-    app(mode=mode, steam_game_id=steam_game_id)
+def main():
+    args = parse_arguments()
+    logging.info("Starting the application with arguments: %s", args)
+
+    mode = args.mode
+    logging.info("Running in %s mode", mode)
+
+    steam_game_id = args.steam_game_id
+    logging.info("Emulating Steam Game ID(s): %s", steam_game_id)
+
+    config.time_restart_delay = args.time_restart_delay
+    logging.info(f"Using time_restart_delay: {config.time_restart_delay} seconds")
+
+    config.callback_sleep_interval = args.callback_sleep_interval
+    logging.info(f"Using callback_sleep_interval: {config.callback_sleep_interval} seconds")
+
+    app(mode=mode, steam_game_id=steam_game_id, args=args)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main(*sys.argv[1:])
+    main()

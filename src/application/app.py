@@ -5,7 +5,7 @@ import pystray
 from PIL import Image
 
 from utils import run
-from config import APP_NAME, APP_SLOG, ICON_PATH, TIME_RESTART_DELAY
+from config import APP_NAME, APP_SLOG, ICON_PATH, MOD_TYPES, time_restart_delay
 
 processes = []
 stop_event = Event()
@@ -15,20 +15,20 @@ import sys
 import subprocess
 import os
 
-def detach_console():
-    if "--detached" in sys.argv:
+def detach_console(args):
+    if args.detached:
         return
 
-    # Windows
+    cmd = [sys.executable, *sys.argv, "--detached"]
+
     if os.name == "nt":
         subprocess.Popen(
             ["pythonw", *sys.argv, "--detached"],
             close_fds=True
         )
     else:
-        # Linux / macOS
         subprocess.Popen(
-            [sys.executable, *sys.argv, "--detached"],
+            cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
@@ -81,10 +81,10 @@ def restart_all(icon=None, item=None):
     stop_all_processes()
 
     def delayed_start():
-        logging.info(f"Restarting processes after {TIME_RESTART_DELAY} seconds...")
+        logging.info(f"Restarting processes after {time_restart_delay} seconds...")
         start_processes(current_steam_game_ids)
 
-    Timer(TIME_RESTART_DELAY, delayed_start).start()
+    Timer(time_restart_delay, delayed_start).start()
 
 
 def stop_and_exit(icon=None, item=None):
@@ -93,28 +93,17 @@ def stop_and_exit(icon=None, item=None):
         icon.stop()
 
 
-def app(mode: str = "run", steam_game_id: list = None):
+def app(mode: str = MOD_TYPES[0], steam_game_id: list = None, args=None):
     if steam_game_id is None:
         steam_game_id = ["480"]
 
     logging.info(f"Starting app with mode: {mode} and Steam Game ID(s): {steam_game_id}")
 
-    if mode == "console":
-        start_processes(steam_game_id)
-
+    if mode == MOD_TYPES[0]: # tray
         try:
-            while True:
-                for p in processes:
-                    p.join(timeout=1)
-        except KeyboardInterrupt:
-            logging.info("Ctrl+C received, shutting down...")
-            stop_all_processes()
-
-    elif mode == "run":
-        detach_console()
-        start_processes(steam_game_id)
+            detach_console(args)
+            start_processes(steam_game_id)
         
-        try:
             menu = pystray.Menu(
                 pystray.MenuItem("Restart", restart_all),
                 pystray.MenuItem("Exit", stop_and_exit),
@@ -129,6 +118,21 @@ def app(mode: str = "run", steam_game_id: list = None):
 
             icon.run()
 
+        except Exception as e:
+            logging.error(f"An error occurred in app: {e}")
+            stop_all_processes()
+
+    elif mode == MOD_TYPES[1]: # console
+        try:
+            detach_console(args)
+            start_processes(steam_game_id)
+        
+            while True:
+                for p in processes:
+                    p.join(timeout=1)
+        except KeyboardInterrupt:
+            logging.info("Ctrl+C received, shutting down...")
+            stop_all_processes()
         except Exception as e:
             logging.error(f"An error occurred in app: {e}")
             stop_all_processes()
