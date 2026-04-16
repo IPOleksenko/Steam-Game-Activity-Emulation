@@ -4,6 +4,7 @@ import argparse
 from application import app
 from config import MOD_TYPES
 import config
+from utils import setup_logging, argparse_hhmm_time 
 
 def parse_arguments():
     pre_parser = argparse.ArgumentParser(add_help=False)
@@ -43,7 +44,22 @@ def parse_arguments():
         "--callback_sleep_interval",
         type=float,
         default=config.callback_sleep_interval,
-        help="Sleep interval in seconds for SteamAPI_RunCallbacks loop (default: %(default)s)"
+        help="Sleep interval in seconds for SteamAPI_RunCallbacks loop (default: %(default)s. If None, the callback is not used)"
+    )
+
+    parser.add_argument(
+        "--restart_interval",
+        type=float,
+        default=config.restart_interval,
+        help="Interval in seconds for automatic restarts (default: %(default)s. If None, automatic restarts are disabled)"
+    )
+
+    parser.add_argument(
+        "--restart_time",
+        type=argparse_hhmm_time,
+        nargs="+",
+        default=config.restart_time,
+        help="One or more scheduled restart times in HH:MM format (default: %(default)s. If None, scheduled restarts are disabled)"
     )
 
     return parser.parse_args()
@@ -59,13 +75,19 @@ def main():
     logging.info("Emulating Steam Game ID(s): %s", steam_game_id)
 
     config.time_restart_delay = args.time_restart_delay
-    logging.info(f"Using time_restart_delay: {config.time_restart_delay} seconds")
+    logging.info(f"Using time_restart_delay: {config.time_restart_delay} {'seconds' if config.time_restart_delay else ''}")
 
     config.callback_sleep_interval = args.callback_sleep_interval
-    logging.info(f"Using callback_sleep_interval: {config.callback_sleep_interval} seconds")
+    logging.info(f"Using callback_sleep_interval: {config.callback_sleep_interval} {'seconds' if config.callback_sleep_interval else ''}")
+
+    config.restart_interval = args.restart_interval
+    logging.info(f"Using restart_interval: {config.restart_interval} {'seconds' if config.restart_interval else ''}")
+    
+    config.restart_time = args.restart_time
+    logging.info(f"Using restart_time: {config.restart_time}")
 
     app(mode=mode, steam_game_id=steam_game_id, args=args)
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    setup_logging()
     main()

@@ -13,4 +13,6 @@ SRC_PATH = Path(os.path.join(ROOT_PATH, 'src'))
 STEAMWORKS_SDK_PATH = Path(os.path.join(ROOT_PATH, 'steamworks_sdk_155'))
 
 time_restart_delay = 30.0
-callback_sleep_interval = 0.01
+callback_sleep_interval = None
+restart_interval = None
+restart_time = None

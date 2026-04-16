@@ -1,19 +1,21 @@
+import argparse
 import logging
-from multiprocessing import Process
-from threading import Event, Timer
+from multiprocessing import Process, Event
+from threading import Timer
 import pystray
 from PIL import Image
+import sys
+import subprocess
+import os
 
-from utils import run
-from config import APP_NAME, APP_SLOG, ICON_PATH, MOD_TYPES, time_restart_delay
+from utils import run, setup_logging, start_restart_schedulers
+from config import APP_NAME, APP_SLOG, ICON_PATH, MOD_TYPES
+import config
 
 processes = []
 stop_event = Event()
 current_steam_game_ids = []
 
-import sys
-import subprocess
-import os
 
 def detach_console(args):
     if args.detached:
@@ -37,9 +39,10 @@ def detach_console(args):
 
     sys.exit()
 
-def worker(game_id: str):
+def worker(game_id: str, callback_sleep_interval: float = None):
     try:
-        run(steam_game_id=[game_id])
+        setup_logging()
+        run(steam_game_id=[game_id], callback_sleep_interval=callback_sleep_interval, stop_event=stop_event)
     except Exception as e:
         logging.error(f"Worker error for {game_id}: {e}")
 
@@ -51,7 +54,7 @@ def start_processes(steam_game_id: list):
     processes = []
 
     for game_id in steam_game_id:
-        p = Process(target=worker, args=(game_id,))
+        p = Process(target=worker, args=(game_id, config.callback_sleep_interval))
         p.start()
         processes.append(p)
         logging.info(f"Process started for Game ID {game_id}")
@@ -81,10 +84,10 @@ def restart_all(icon=None, item=None):
     stop_all_processes()
 
     def delayed_start():
-        logging.info(f"Restarting processes after {time_restart_delay} seconds...")
+        logging.info(f"Restarting processes after {config.time_restart_delay} seconds...")
         start_processes(current_steam_game_ids)
 
-    Timer(time_restart_delay, delayed_start).start()
+    Timer(config.time_restart_delay, delayed_start).start()
 
 
 def stop_and_exit(icon=None, item=None):
@@ -93,17 +96,21 @@ def stop_and_exit(icon=None, item=None):
         icon.stop()
 
 
-def app(mode: str = MOD_TYPES[0], steam_game_id: list = None, args=None):
+def app(mode: str = MOD_TYPES[0], steam_game_id: list = None, args: argparse.Namespace = None):
     if steam_game_id is None:
         steam_game_id = ["480"]
 
     logging.info(f"Starting app with mode: {mode} and Steam Game ID(s): {steam_game_id}")
 
+    try:
+        detach_console(args)
+        start_processes(steam_game_id)
+        start_restart_schedulers(restart_all, restart_interval=config.restart_interval, restart_time=config.restart_time)
+    except Exception as e:
+        logging.error(f"An error occurred during app initialization: {e}")
+
     if mode == MOD_TYPES[0]: # tray
         try:
-            detach_console(args)
-            start_processes(steam_game_id)
-        
             menu = pystray.Menu(
                 pystray.MenuItem("Restart", restart_all),
                 pystray.MenuItem("Exit", stop_and_exit),
@@ -124,9 +131,6 @@ def app(mode: str = MOD_TYPES[0], steam_game_id: list = None, args=None):
 
     elif mode == MOD_TYPES[1]: # console
         try:
-            detach_console(args)
-            start_processes(steam_game_id)
-        
             while True:
                 for p in processes:
                     p.join(timeout=1)
